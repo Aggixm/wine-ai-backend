@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: wine-ai-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
