@@ -1,45 +1,62 @@
-const express = require('express');
-const multer = require('multer');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+// --- Wine AI Backend Server ---
+// Einfaches Express-Backend mit Upload- und Analysefunktion
+
+import express from "express";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-const upload = multer({ dest: 'uploads/' });
+// Ordner für Uploads
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-app.post('/upload', upload.fields([{ name: 'front' }, { name: 'back' }]), (req, res) => {
-  console.log(req.files);
-  res.json({ message: 'Dateien hochgeladen' });
+// Multer Setup (Datei-Upload)
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+const upload = multer({ storage: storage });
+
+// --- Test-Route ---
+app.get("/", (req, res) => {
+  res.send("🍷 Wine AI Backend läuft erfolgreich!");
 });
 
-app.post('/analyze', (req, res) => {
-  const sampleResult = {
-    grape: "Cabernet Sauvignon",
-    taste: "trocken, fruchtig",
-    foodPairing: "Rindfleisch, Pasta",
-    bestBefore: "2026-12-31"
+// --- Upload-Route ---
+app.post("/upload", upload.single("photo"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Keine Datei hochgeladen" });
+  res.json({
+    message: "Upload erfolgreich",
+    file: req.file.filename,
+  });
+});
+
+// --- Analyse-Route ---
+app.post("/analyze", (req, res) => {
+  const { wineName, notes } = req.body;
+
+  // Beispielhafte KI-Analyse (später durch echtes Modell ersetzbar)
+  const result = {
+    variety: wineName || "Unbekannter Wein",
+    taste: notes || "Keine Beschreibung",
+    foodPairing: "Passt gut zu Pasta, Käse oder Fleisch",
+    drinkBy: "2028",
   };
-  res.json(sampleResult);
+
+  res.json(result);
 });
 
-app.post('/add-wine', (req, res) => {
-  const wine = req.body;
-  const dataPath = path.join(__dirname, 'data', 'wines.json');
-  let wines = [];
-  if (fs.existsSync(dataPath)) {
-    wines = JSON.parse(fs.readFileSync(dataPath));
-  }
-  wines.push(wine);
-  fs.writeFileSync(dataPath, JSON.stringify(wines, null, 2));
-  res.json({ message: 'Wein hinzugefügt', wine });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server läuft auf Port ${PORT}`);
+// --- Port-Konfiguration ---
+const port = process.env.PORT || 10000; // ✅ wichtig für Render!
+app.listen(port, "0.0.0.0", () => {
+  console.log(`✅ Server läuft auf Port ${port}`);
 });
